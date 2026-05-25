@@ -1,0 +1,111 @@
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String             @id @default(uuid())
+  email     String             @unique
+  name      String?
+  createdAt DateTime           @default(now())
+  accounts  InstagramAccount[]
+}
+
+model InstagramAccount {
+  id            String       @id @default(uuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  igUserId      String       @unique
+  username      String
+  profilePic    String?
+  accessToken   String
+  tokenExpiry   DateTime
+  followersCount Int         @default(0)
+  webhookActive Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  automations   Automation[]
+  contacts      Contact[]
+
+  @@index([userId])
+}
+
+model Automation {
+  id          String   @id @default(uuid())
+  accountId   String
+  account     InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  name        String
+  isActive    Boolean  @default(true)
+  triggerType String
+  keywords    String[]
+  exactMatch  Boolean  @default(false)
+  checkFollow Boolean  @default(false)
+
+  welcomeMsg     String
+  noFollowMsg    String?
+  afterFollowMsg String?
+  reminderMsg    String?
+  reminderDelay  Int?
+  extraMsg       String?
+  extraDelay     Int?
+
+  buttons        Json?
+  commentReplies String[]
+
+  stats     AutomationStats?
+  logs      AutomationLog[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId])
+}
+
+model AutomationStats {
+  id           String     @id @default(uuid())
+  automationId String     @unique
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  triggered    Int        @default(0)
+  dmsSent      Int        @default(0)
+  linksClicked Int        @default(0)
+  updatedAt    DateTime   @updatedAt
+}
+
+model AutomationLog {
+  id           String     @id @default(uuid())
+  automationId String
+  automation   Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  contactIgId  String
+  contactName  String?
+  triggerType  String
+  triggerText  String?
+  dmSent       Boolean
+  error        String?
+  createdAt    DateTime   @default(now())
+
+  @@index([automationId])
+  @@index([createdAt])
+}
+
+model Contact {
+  id           String           @id @default(uuid())
+  accountId    String
+  account      InstagramAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  igUserId     String
+  username     String
+  fullName     String?
+  profilePic   String?
+  tags         String[]
+  notes        String?
+  followsUs    Boolean?
+  firstContact DateTime         @default(now())
+  lastContact  DateTime         @default(now())
+  dmCount      Int              @default(0)
+
+  @@unique([accountId, igUserId])
+  @@index([accountId])
+}
